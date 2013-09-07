@@ -17,9 +17,9 @@ void  ALARMhandler(int sig)
     scanf("%s", a);
     if((strcmp(a, "y") == 0) || (strcmp(a, "Y") == 0) || (strcmp(a, "yes") == 0)
        || (strcmp(a, "YES") == 0)){
-	   exit(0);
-       }
-	
+        exit(0);
+    }
+    
     signal(SIGALRM, ALARMhandler);     /* reinstall the handler    */
 }
 
@@ -54,7 +54,7 @@ void read_profile_variable(char *token, char *var_argv){
 }
 
 void print_prompt_sign(char *prompt){
-      if(strlen(prompt)==0){
+    if(strlen(prompt)==0){
         read_profile_variable(prompt,"SIGN");
     }
     printf("%s", prompt);
@@ -79,60 +79,60 @@ void exit_handler(char *buffer){
 		fflush(stdout);
 		exit(0);
 	}
-
+    
 }
 
 void change_directory(char *LHS, char *dest){
-
+    
 	if(strcmp(LHS, "cd")==0){
-		
-  if(dest==NULL)
-  {
-    dest = getenv("HOME");
-  }
-  if(chdir(dest)==0)
-  {
-    printf("Success");
-  }
-  else
-    perror("ch_dir error");
+        
+        if(dest==NULL)
+        {
+            dest = getenv("HOME");
+        }
+        if(chdir(dest)==0)
+        {
+            printf("Success");
+        }
+        else
+            perror("ch_dir error");
 	}
-
+    
 }
 
 void alias_handler(char **argv){
-char alias[100];
-FILE *file = fopen("./.aliases", "a+" );
-            if(file != NULL){
-			strcat(alias,argv[1]);
-			strcat(alias,argv[2]);
-			strcat(alias,argv[3]);
-            strcat(alias,"\n");
-                fputs(alias,file);
-                fclose(file);
-            }
+    char alias[100];
+    FILE *file = fopen("./.aliases", "a+" );
+    if(file != NULL){
+        strcat(alias,argv[1]);
+        strcat(alias,argv[2]);
+        strcat(alias,argv[3]);
+        strcat(alias,"\n");
+        fputs(alias,file);
+        fclose(file);
+    }
 }
 
 void  execute(char **argv)
 {
-     pid_t  pid;
-     int    status;
-
-     if ((pid = fork()) < 0) {    
-          printf("*** ERROR: forking child process failed\n");
-          exit(1);
-     }
-     else if (pid == 0) {  
-          if (execvp(*argv, argv) < 0) {    
-               printf("*** ERROR: exec failed\n");
-               exit(1);
-          }	
-     }
-     else { 
+    pid_t  pid;
+    int    status;
+    
+    if ((pid = fork()) < 0) {
+        printf("*** ERROR: forking child process failed\n");
+        exit(1);
+    }
+    else if (pid == 0) {
+        if (execvp(*argv, argv) < 0) {
+            printf("*** ERROR: exec failed\n");
+            exit(1);
+        }
+    }
+    else {
         while (wait(&status) != pid);
-       
-         
-     }
+        
+        
+    }
 }
 
 void  parse(char *line, char **argv)
@@ -150,114 +150,150 @@ void  parse(char *line, char **argv)
 
 
 void handle_others(char **argv){
-
-printf("arg is %s", *argv);
-
-FILE *file = fopen("./.aliases", "r");
-if(file!=NULL) {
-	char line[128];
-			 while ( fgets ( line, sizeof(line), file ) != NULL ){
-				char *search = "=";
-				char *result = NULL;
-				char *command = NULL;
-				result = strtok(line,"=");
-				if(strcmp(argv[0],result)==0){
-					command= strtok(NULL,"=");
-                    command[strlen(command)-1]='\0';
-					argv[0]=command;
-					}
-					}
-			
-	
-}
+    
+    
+    FILE *file = fopen("./.aliases", "r");
+    if(file!=NULL) {
+        char line[128];
+        while ( fgets ( line, sizeof(line), file ) != NULL ){
+            char *search = "=";
+            char *result = NULL;
+            char *command = NULL;
+            result = strtok(line,"=");
+            if(strcmp(argv[0],result)==0){
+                command= strtok(NULL,"=");
+                command[strlen(command)-1]='\0';
+                argv[0]=command;
+            }
+        }
+        
+        
+    }
     execute(argv);
-
+    
 }
 
 void redirection_handler(char **argv){
-
-char *file;
-int i=0;
-while(*argv!=NULL){
-	if(strcmp(argv[i],">")==0){
-        file = argv[i+1];
-        break;
-    }
+    
+    char *file;
+    int i=0;
+    while(*argv!=NULL){
+        if(strcmp(argv[i],">")==0){
+            file = argv[i+1];
+            break;
+        }
     	i++;
+    }
+    
+    
+    int fd;
+    close(1);
+    fd = open(file, O_APPEND);
+    if(fd<0)
+    {
+        fd = creat(file, 0666);
+        if(fd<0)
+        {
+            perror("create file failed");
+            exit(-1);
+        }
+    }
+    dup(fd);
+    execute(argv);
+    close(fd);
 }
 
 
-int fd;
-     close(1);
-     fd = open(file, O_APPEND);
-     if(fd<0)
-     {
-       fd = creat(file, 0666);
-       if(fd<0)
-       {
-         perror("create file failed");
-         exit(-1);
-       }
-     }
-     dup(fd);
-     execute(argv);
-     close(fd);
+void count_pipes(char **argv){
+    int i=0;
+    char *commands[64];
+    int k = -1;
+    int command_inc = 0;
+    while(argv[i] !=NULL) {
+        if(strcmp(argv[i],"|")==0){
+            k=k+1;
+            commands[command_inc] = argv[k];
+            printf("1st Command:%s",commands[command_inc]);
+            k++;
+            for (; k<i; k++) {
+                strcat(commands[command_inc],argv[k]);
+            }
+            
+        }
+        command_inc= command_inc+1;
+        i++;
+    }
+    printf("k is :%d",k);
+    k = k+1;
+    printf("i is %d",i);
+    commands[command_inc]=argv[k];
+    k++;
+    for (; k<i; k++) {
+        //        strcat(commands[command_inc],"\t");
+        strcat(commands[command_inc],argv[k]);
+    }
+    printf("2nd Command:%s",commands[command_inc]);
 }
-
 
 
 int main(){
     char cmdline[1024];
-	
+    
 	char prompt[30]={'\0'};
 	char buffer[1024];
 	int count;
 	char *argv[64];
-	
-	
+    
+    
 	print_prompt_sign(prompt);
-	 init_sh();
-print_prompt_sign(prompt);
-
-	sigset_t sigs;
-
-        sigemptyset(&sigs);
-        sigaddset(&sigs, SIGINT);
-        sigprocmask(SIG_BLOCK, &sigs, 0);
-	while(fgets(buffer,1024,stdin)!=NULL) {
-    strcpy(cmdline,buffer);
-    if (strcmp(buffer ,"\n")!=0){
-	buffer[strlen(buffer)-1] = '\0';
-    parse(buffer, argv);
-
-	 
- 	char *tkn = strtok(buffer, " \t\n");
-	
-	exit_handler(tkn);
-	change_directory(tkn,argv[1]);
-	
-	
-	
-	int i=0;
-        int redirection = 0;
-	while(argv[i]!=NULL){
-		if(strcmp(argv[i],">")==0){
-			redirection_handler(argv);
-            redirection = 1;
-			break;
-		}
-		i++;
-	}
-	
-    printf("%sToken",tkn);
-        if(redirection == 0){
-            if(strcmp(tkn, "alias")==0){
-                alias_handler(argv);
-            }else{
-                handle_others(argv);}}
+    init_sh();
     print_prompt_sign(prompt);
-    }
+    
+	sigset_t sigs;
+    
+    sigemptyset(&sigs);
+    sigaddset(&sigs, SIGINT);
+    sigprocmask(SIG_BLOCK, &sigs, 0);
+	while(fgets(buffer,1024,stdin)!=NULL) {
+        strcpy(cmdline,buffer);
+        if (strcmp(buffer ,"\n")!=0){
+            buffer[strlen(buffer)-1] = '\0';
+            parse(buffer, argv);
+            
+            
+            char *tkn = strtok(buffer, " \t\n");
+            
+            exit_handler(tkn);
+            change_directory(tkn,argv[1]);
+            
+            
+            int i=0;
+            int redirection = 0;
+            int piping =0;
+            while(argv[i]!=NULL){
+                if(strcmp(argv[i],">")==0){
+                    redirection_handler(argv);
+                    redirection = 1;
+                    break;
+                }
+                else if(strcmp(argv[i],"|")==0){
+                    count_pipes(argv);
+                    printf("Piping %d",i);
+                    piping=1;
+                    break;
+                }
+                i++;
+            }
+            
+            
+            
+            if((redirection == 0)&&(piping==0)){
+                printf("pipe is %d", piping);
+                if(strcmp(tkn, "alias")==0){
+                    alias_handler(argv);
+                }else{
+                    handle_others(argv);}}
+            print_prompt_sign(prompt);
+        }
     }
 }
-
-
